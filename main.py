@@ -116,15 +116,21 @@ def main():
             # Create columns for each selected model
             cols = st.columns(len(selected_models))
 
-            # Some custom CSS for a "boxed" look
+            # Some custom CSS for a "boxed" look with scrollbars and fixed height
             st.markdown(
                 """
                 <style>
                 .boxed {
-                    border: 1px solid rgba(49,51,63,0.2);
-                    border-radius: 6px;
-                    padding: 10px;
+                    border: 2px solid #888;
+                    border-radius: 8px;
+                    padding: 12px;
                     margin: 10px 0;
+                    background: #fff;
+                    color: #222;
+                    min-height: 180px;
+                    max-height: 350px;
+                    overflow-y: auto;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
                 }
                 </style>
                 """,
@@ -153,7 +159,9 @@ def main():
                         st.markdown(
                             f"""
                             <div class="boxed">
-                                {response}
+                                <div style='white-space: pre-wrap; font-family: inherit; font-size: 1rem;'>
+                                    {response}
+                                </div>
                             </div>
                             """,
                             unsafe_allow_html=True
