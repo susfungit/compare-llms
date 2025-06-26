@@ -4,6 +4,7 @@ import anthropic
 from openai import OpenAI
 from google import genai
 import json
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Switch to wide layout
 st.set_page_config(layout="wide")
@@ -71,6 +72,13 @@ def get_model_function(provider):
     else:
         raise ValueError(f"Unknown provider: {provider}")
 
+def get_response(model_func, prompt, model_name):
+    try:
+        response = model_func(prompt, model_name)
+        return model_name, response, None
+    except Exception as e:
+        return model_name, None, str(e)
+
 def main():
     st.title("ChatGPT Model Comparison")
     
@@ -123,12 +131,25 @@ def main():
                 unsafe_allow_html=True
             )
 
-            # Generate and display each response
-            for i, (model_name, model_func) in enumerate(selected_models):
+            # Parallel execution for model responses
+            futures = []
+            with ThreadPoolExecutor() as executor:
+                for model_name, model_func in selected_models:
+                    futures.append(executor.submit(get_response, model_func, prompt, model_name))
+                results = [None] * len(selected_models)
+                name_to_index = {model_name: i for i, (model_name, _) in enumerate(selected_models)}
+                for future in as_completed(futures):
+                    model_name, response, error = future.result()
+                    idx = name_to_index[model_name]
+                    results[idx] = (model_name, response, error)
+
+            # Display results in the same order as selected_models
+            for i, (model_name, response, error) in enumerate(results):
                 with cols[i]:
                     st.markdown(f"#### {model_name}")
-                    try:
-                        response = model_func(prompt, model_name)
+                    if error:
+                        st.error(f"Error for {model_name}: {error}")
+                    else:
                         st.markdown(
                             f"""
                             <div class="boxed">
@@ -137,8 +158,6 @@ def main():
                             """,
                             unsafe_allow_html=True
                         )
-                    except Exception as e:
-                        st.error(f"Error for {model_name}: {str(e)}")
         else:
             st.warning("Please enter a prompt before generating responses.")
 

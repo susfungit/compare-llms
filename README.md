@@ -7,6 +7,7 @@ This is a Streamlit web application that allows you to compare responses from mu
 - Select which models to include in the comparison.
 - View all responses in a clean, boxed, side-by-side layout.
 - **Easily add or remove models by editing `models_config.json`.**
+- **Faster results: LLM requests are now executed in parallel for improved efficiency.**
 
 ## Supported Models
 The list of supported models is maintained in the `models_config.json` file. Each entry specifies the model name and its provider. Example:
@@ -64,6 +65,7 @@ The app will open in your browser. Enter a prompt, select models, and click "Gen
 - Some models may require access approval or billing setup with the provider.
 - If you encounter errors, check your API keys and provider access.
 - To add or remove models, simply edit the `models_config.json` file and restart the app.
+- LLM requests are executed in parallel using Python's `concurrent.futures` (part of the standard library, no extra install needed).
 
 ## License
 MIT 
