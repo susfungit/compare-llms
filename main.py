@@ -3,6 +3,7 @@ import streamlit as st
 import anthropic
 from openai import OpenAI
 from google import genai
+import json
 
 # Switch to wide layout
 st.set_page_config(layout="wide")
@@ -58,26 +59,32 @@ def generate_grok_text(prompt,model):
     )
     return completion.choices[0].message.content
 
+def get_model_function(provider):
+    if provider == "openai":
+        return generate_gpt_text
+    elif provider == "claude":
+        return generate_claude_text
+    elif provider == "gemini":
+        return generate_gemini_text
+    elif provider == "grok":
+        return generate_grok_text
+    else:
+        raise ValueError(f"Unknown provider: {provider}")
+
 def main():
     st.title("ChatGPT Model Comparison")
     
     # Prompt area
     prompt = st.text_area("Enter your prompt:", height=150)
 
-    # List of models to choose from
-    MODELS = [
-        ("gpt-4o", generate_gpt_text),
-        ("chatgpt-4o-latest", generate_gpt_text),
-        ("o1", generate_gpt_text),
-	("o3-mini",generate_gpt_text),
-        ("gemini-2.0-flash", generate_gemini_text),
-	("grok-2-latest",generate_grok_text),
-	("claude-3-7-sonnet-20250219",generate_claude_text),
-    ]
+    # Load models from config file
+    with open("models_config.json", "r") as f:
+        models_config = json.load(f)
+    MODELS = [(m["name"], get_model_function(m["provider"])) for m in models_config]
 
     st.subheader("Select the models you want to compare:")
 
-    # Create columns for each model’s checkbox so they appear horizontally
+    # Create columns for each model's checkbox so they appear horizontally
     checkbox_cols = st.columns(len(MODELS))
     model_selections = {}
     for i, (model_name, _) in enumerate(MODELS):

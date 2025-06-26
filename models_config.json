@@ -1,0 +1,9 @@
+[
+  {"name": "gpt-4o", "provider": "openai"},
+  {"name": "chatgpt-4o-latest", "provider": "openai"},
+  {"name": "o1", "provider": "openai"},
+  {"name": "o3-mini", "provider": "openai"},
+  {"name": "gemini-2.0-flash", "provider": "gemini"},
+  {"name": "grok-2-latest", "provider": "grok"},
+  {"name": "claude-3-7-sonnet-20250219", "provider": "claude"}
+] 

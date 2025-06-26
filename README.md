@@ -6,12 +6,19 @@ This is a Streamlit web application that allows you to compare responses from mu
 - Compare responses from OpenAI GPT, Anthropic Claude, Google Gemini, and xAI Grok models.
 - Select which models to include in the comparison.
 - View all responses in a clean, boxed, side-by-side layout.
+- **Easily add or remove models by editing `models_config.json`.**
 
 ## Supported Models
-- OpenAI: `gpt-4o`, `chatgpt-4o-latest`, `o1`, `o3-mini`
-- Google: `gemini-2.0-flash`
-- xAI: `grok-2-latest`
-- Anthropic: `claude-3-7-sonnet-20250219`
+The list of supported models is maintained in the `models_config.json` file. Each entry specifies the model name and its provider. Example:
+
+```json
+[
+  {"name": "gpt-4o", "provider": "openai"},
+  {"name": "gemini-2.0-flash", "provider": "gemini"}
+]
+```
+
+To add a new model, simply add a new object to this list with the appropriate `name` and `provider`.
 
 ## Setup Instructions
 
@@ -56,6 +63,7 @@ The app will open in your browser. Enter a prompt, select models, and click "Gen
 - Make sure you have valid API keys for the models you want to use.
 - Some models may require access approval or billing setup with the provider.
 - If you encounter errors, check your API keys and provider access.
+- To add or remove models, simply edit the `models_config.json` file and restart the app.
 
 ## License
 MIT 
