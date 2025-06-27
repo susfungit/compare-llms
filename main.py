@@ -5,6 +5,7 @@ from openai import OpenAI
 from google import genai
 import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import time
 
 # Switch to wide layout
 st.set_page_config(layout="wide")
@@ -73,11 +74,14 @@ def get_model_function(provider):
         raise ValueError(f"Unknown provider: {provider}")
 
 def get_response(model_func, prompt, model_name):
+    start_time = time.time()
     try:
         response = model_func(prompt, model_name)
-        return model_name, response, None
+        elapsed = time.time() - start_time
+        return model_name, response, None, elapsed
     except Exception as e:
-        return model_name, None, str(e)
+        elapsed = time.time() - start_time
+        return model_name, None, str(e), elapsed
 
 def main():
     st.title("ChatGPT Model Comparison")
@@ -145,22 +149,26 @@ def main():
                 results = [None] * len(selected_models)
                 name_to_index = {model_name: i for i, (model_name, _) in enumerate(selected_models)}
                 for future in as_completed(futures):
-                    model_name, response, error = future.result()
+                    model_name, response, error, elapsed = future.result()
                     idx = name_to_index[model_name]
-                    results[idx] = (model_name, response, error)
+                    results[idx] = (model_name, response, error, elapsed)
 
             # Display results in the same order as selected_models
-            for i, (model_name, response, error) in enumerate(results):
+            for i, (model_name, response, error, elapsed) in enumerate(results):
                 with cols[i]:
                     st.markdown(f"#### {model_name}")
                     if error:
                         st.error(f"Error for {model_name}: {error}")
+                        st.markdown(f"<span style='color: #888;'>⏱️ Time: {elapsed:.2f} seconds</span>", unsafe_allow_html=True)
                     else:
                         st.markdown(
                             f"""
                             <div class="boxed">
                                 <div style='white-space: pre-wrap; font-family: inherit; font-size: 1rem;'>
                                     {response}
+                                </div>
+                                <div style='margin-top: 10px; color: #888; font-size: 0.95em;'>
+                                    ⏱️ Time: {elapsed:.2f} seconds
                                 </div>
                             </div>
                             """,
