@@ -1,29 +1,47 @@
-# ChatGPT Model Comparison
+# 🤖 LLM Model Comparison Tool
 
-This is a Streamlit web application that allows you to compare responses from multiple large language models (LLMs) side by side. Enter a prompt, select which models to compare, and view their responses in a visually organized way.
+A powerful Streamlit web application that allows you to compare responses from multiple Large Language Models (LLMs) side by side. Enter a prompt, select which models to compare, and view their responses in a visually organized way with detailed performance metrics.
 
-## Features
-- Compare responses from OpenAI GPT, Anthropic Claude, Google Gemini (via the latest google-genai SDK), and xAI Grok models.
-- Select which models to include in the comparison.
-- View all responses in a clean, boxed, side-by-side layout.
-- **Easily add or remove models by editing `models_config.json`.**
-- **Faster results: LLM requests are now executed in parallel for improved efficiency.**
-- **Each model's response is shown in a clearly visible, scrollable, bordered rectangle with a white background and dark text for readability.**
-- **Response timing and token usage statistics for each model (input tokens, output tokens, and total tokens).**
+## ✨ Features
 
-## Supported Models
-The list of supported models is maintained in the `models_config.json` file. Each entry specifies the model name and its provider. Example:
+### Core Functionality
+- **Multi-Model Comparison**: Compare responses from OpenAI GPT, Anthropic Claude, Google Gemini, and xAI Grok models
+- **Parallel Processing**: All LLM requests execute simultaneously for faster results
+- **Real-time Metrics**: Response timing and token usage statistics for each model
+- **Clean UI**: Scrollable, bordered response windows with excellent readability
 
-```json
-[
-  {"name": "gpt-4o", "provider": "openai"},
-  {"name": "gemini-2.0-flash", "provider": "gemini"}
-]
+### Advanced Features
+- **Modular Architecture**: Clean, maintainable code structure with separated concerns
+- **Configuration-Driven**: Easily add/remove models via `models_config.json`
+- **Error Handling**: Comprehensive error management with detailed feedback
+- **Performance Analytics**: Summary statistics showing fastest/slowest models
+- **Progress Tracking**: Real-time progress indicators during generation
+
+## 🏗️ Project Structure
+
+```
+compare-llms/
+├── main.py                    # Original monolithic version
+├── main_modular.py           # New modular version (recommended)
+├── models/                   # Model implementations
+│   ├── base.py              # Abstract base class
+│   ├── openai_model.py      # OpenAI GPT models
+│   ├── claude_model.py      # Anthropic Claude models
+│   ├── gemini_model.py      # Google Gemini models
+│   ├── grok_model.py        # xAI Grok models
+│   └── model_factory.py     # Model factory pattern
+├── config/                  # Configuration management
+│   └── settings.py          # Config loading and validation
+├── ui/                      # UI components
+│   └── components.py        # Reusable UI components
+├── utils/                   # Utilities
+│   └── parallel_executor.py # Parallel execution engine
+├── models_config.json       # Model configuration
+├── requirements.txt         # Python dependencies
+└── README.md               # This file
 ```
 
-To add a new model, simply add a new object to this list with the appropriate `name` and `provider`.
-
-## Setup Instructions
+## 🚀 Quick Start
 
 ### 1. Clone the Repository
 ```bash
@@ -32,22 +50,15 @@ cd compare-llms
 ```
 
 ### 2. Install Dependencies
-It is recommended to use a virtual environment:
 ```bash
 python3 -m venv venv
-source venv/bin/activate
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 3. Set API Keys
-You need API keys for each provider you want to use. Set the following environment variables:
+### 3. Configure API Keys
+Set the following environment variables:
 
-- **OpenAI**: `OPENAI_API_KEY`
-- **Anthropic**: `ANTHROPIC_API_KEY`
-- **Google Gemini**: `GEMINI_KEY` (set in your environment; the google-genai client will use it automatically if present)
-- **xAI Grok**: `XAI_API_KEY`
-
-You can set them in your shell or in a `.env` file (if using a tool like `python-dotenv`). Example:
 ```bash
 export OPENAI_API_KEY=your-openai-key
 export ANTHROPIC_API_KEY=your-anthropic-key
@@ -55,22 +66,121 @@ export GEMINI_KEY=your-gemini-key
 export XAI_API_KEY=your-xai-key
 ```
 
-### 4. Run the App
+### 4. Run the Application
+
+**Option A: Modular Version (Recommended)**
+```bash
+streamlit run main_modular.py
+```
+
+**Option B: Original Version**
 ```bash
 streamlit run main.py
 ```
 
-The app will open in your browser. Enter a prompt, select models, and click "Generate Responses" to compare outputs.
+## ⚙️ Configuration
 
-## Notes
-- Make sure you have valid API keys for the models you want to use.
-- Some models may require access approval or billing setup with the provider.
-- If you encounter errors, check your API keys and provider access.
-- To add or remove models, simply edit the `models_config.json` file and restart the app.
-- LLM requests are executed in parallel using Python's `concurrent.futures` (part of the standard library, no extra install needed).
-- Each model's response is displayed in a scrollable, bordered window for easy reading and comparison.
-- Token usage statistics show input tokens, output tokens, and total tokens for each response. Models that don't provide this information will display "Not available".
-- **Gemini integration now uses the latest [google-genai](https://pypi.org/project/google-genai/) SDK with `genai.Client` and `genai.types`.**
+### Model Configuration
+Models are configured in `models_config.json`:
 
-## License
-MIT 
+```json
+[
+  {"name": "gpt-4o", "provider": "openai", "enabled": true},
+  {"name": "claude-3-7-sonnet-20250219", "provider": "claude", "enabled": true},
+  {"name": "gemini-2.0-flash", "provider": "gemini", "enabled": true},
+  {"name": "grok-2-latest", "provider": "grok", "enabled": true}
+]
+```
+
+### Adding New Models
+1. Add entry to `models_config.json`
+2. Ensure the provider is supported (openai, claude, gemini, grok)
+3. Restart the application
+
+### Supported Providers
+- **OpenAI**: GPT-4, GPT-4 Turbo, O1, O3-mini
+- **Anthropic**: Claude 3.5 Sonnet, Claude 3 Opus, Claude 3 Haiku
+- **Google**: Gemini 2.0 Flash, Gemini 1.5 Pro
+- **xAI**: Grok 2 Latest
+
+## 📊 Features Comparison
+
+| Feature | Original (`main.py`) | Modular (`main_modular.py`) |
+|---------|---------------------|----------------------------|
+| Basic comparison | ✅ | ✅ |
+| Parallel execution | ✅ | ✅ |
+| Token statistics | ✅ | ✅ |
+| Progress indicators | ❌ | ✅ |
+| Summary analytics | ❌ | ✅ |
+| Error validation | Basic | Comprehensive |
+| Code maintainability | Basic | Excellent |
+| Extensibility | Limited | High |
+
+## 🔧 Development
+
+### Architecture Benefits
+- **Modularity**: Each component has a single responsibility
+- **Extensibility**: Easy to add new models or features
+- **Testability**: Components can be tested independently
+- **Maintainability**: Clean interfaces and documentation
+
+### Adding a New Model Provider
+1. Create new model class in `models/` extending `BaseModel`
+2. Implement `_create_client()` and `_generate_response()` methods
+3. Register in `ModelFactory`
+4. Update configuration
+
+Example:
+```python
+# models/new_provider_model.py
+from .base import BaseModel, TokenInfo
+
+class NewProviderModel(BaseModel):
+    def _create_client(self):
+        return NewProviderClient()
+    
+    def _generate_response(self, prompt: str):
+        # Implementation here
+        pass
+```
+
+## 🐛 Troubleshooting
+
+### Common Issues
+- **Configuration errors**: Check `models_config.json` syntax
+- **API key issues**: Verify environment variables are set
+- **Import errors**: Ensure all dependencies are installed
+- **Model failures**: Check API key permissions and quotas
+
+### Debug Mode
+Run with debug logging:
+```bash
+streamlit run main_modular.py --logger.level=debug
+```
+
+## 📈 Performance Notes
+- **Parallel execution** reduces total response time significantly
+- **Client reuse** improves efficiency for multiple requests
+- **Token usage tracking** helps monitor API costs
+- **Error handling** ensures graceful degradation
+
+## 🤝 Contributing
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
+
+## 📄 License
+MIT License - see LICENSE file for details
+
+## 🔗 Links
+- [OpenAI API Documentation](https://platform.openai.com/docs)
+- [Anthropic Claude API](https://docs.anthropic.com/)
+- [Google Gemini API](https://ai.google.dev/)
+- [xAI Grok API](https://docs.x.ai/)
+- [Streamlit Documentation](https://docs.streamlit.io/)
+
+---
+
+**⭐ If you find this tool useful, please consider giving it a star!** 

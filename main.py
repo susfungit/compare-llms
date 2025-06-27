@@ -1,248 +1,180 @@
-import os
 import streamlit as st
-import anthropic
-from openai import OpenAI
-from google import genai
-from google.genai import types
-import json
-from concurrent.futures import ThreadPoolExecutor, as_completed
-import time
-import html
 import warnings
 import logging
+import os
+from typing import List
 
-# Suppress warnings from Google Generative AI library
+# Suppress warnings and logging
 warnings.filterwarnings('ignore', category=UserWarning)
 warnings.filterwarnings('ignore', category=DeprecationWarning)
-
-# Suppress gRPC and absl logging
 logging.getLogger('absl').setLevel(logging.ERROR)
 logging.getLogger('google').setLevel(logging.ERROR)
 logging.getLogger('grpc').setLevel(logging.ERROR)
-
-# Suppress stdout/stderr for gRPC messages
 os.environ['GRPC_PYTHON_LOG_LEVEL'] = 'error'
 
-# Switch to wide layout
-st.set_page_config(layout="wide")
+# Import modular components
+from config.settings import ConfigManager
+from models.model_factory import ModelFactory
+from utils.parallel_executor import ParallelExecutor
+from ui.components import ModelSelector, ResponseDisplay, PromptInput, CustomCSS
 
-def generate_gpt_text(prompt, model):
-    client = OpenAI()
-    completion = client.chat.completions.create(
-        model=model,
-        messages=[
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ]
-    )
-    # Extract token usage
-    usage = completion.usage
-    token_info = {
-        'input_tokens': usage.prompt_tokens,
-        'output_tokens': usage.completion_tokens,
-        'total_tokens': usage.total_tokens
-    }
-    return completion.choices[0].message.content, token_info
-
-def generate_claude_text(prompt, model):
-    client = anthropic.Anthropic()
-    completion = client.messages.create(
-        model=model,
-	max_tokens=1000,
-	temperature=1,
-        messages=[
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ]
-    )
-    # Extract token usage
-    usage = completion.usage
-    token_info = {
-        'input_tokens': usage.input_tokens,
-        'output_tokens': usage.output_tokens,
-        'total_tokens': usage.input_tokens + usage.output_tokens
-    }
-    return completion.content[0].text, token_info
-
-def generate_gemini_text(prompt, model):
-    try:
-    #    GEMINI_KEY = os.getenv("GEMINI_KEY")
-    #    if not GEMINI_KEY:
-    #        raise ValueError("GEMINI_KEY environment variable not set")
-    #    genai.configure(api_key=GEMINI_KEY)
-    #    response = genai.generate_content(model=model, prompt=prompt)
-    #    response_text = response.text if hasattr(response, 'text') else str(response)
-        client=genai.Client()
-        response = client.models.generate_content(
-        model=model,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-        thinking_config=types.ThinkingConfig(thinking_budget=0) # Disables thinking
-    ),
-)
-        token_info = {
-            'input_tokens': 'Not available',
-            'output_tokens': 'Not available',
-            'total_tokens': 'Not available'
-        }
-        return response.text, token_info
-    except Exception as e:
-        raise Exception(f"Gemini API error: {str(e)}")
-
-def generate_grok_text(prompt,model):
-    XAI_API_KEY=os.getenv("XAI_API_KEY")
-    client = OpenAI(
-	api_key=XAI_API_KEY,
-	base_url="https://api.x.ai/v1",
-	)
-    completion = client.chat.completions.create(
-        model=model,
-        messages=[
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ]
-    )
-    # Extract token usage (xAI uses OpenAI-compatible API)
-    usage = completion.usage
-    token_info = {
-        'input_tokens': usage.prompt_tokens,
-        'output_tokens': usage.completion_tokens,
-        'total_tokens': usage.total_tokens
-    }
-    return completion.choices[0].message.content, token_info
-
-def get_model_function(provider):
-    if provider == "openai":
-        return generate_gpt_text
-    elif provider == "claude":
-        return generate_claude_text
-    elif provider == "gemini":
-        return generate_gemini_text
-    elif provider == "grok":
-        return generate_grok_text
-    else:
-        raise ValueError(f"Unknown provider: {provider}")
-
-def get_response(model_func, prompt, model_name):
-    start_time = time.time()
-    try:
-        response, token_info = model_func(prompt, model_name)
-        elapsed = time.time() - start_time
-        return model_name, response, None, elapsed, token_info
-    except Exception as e:
-        elapsed = time.time() - start_time
-        token_info = {
-            'input_tokens': 'Error',
-            'output_tokens': 'Error',
-            'total_tokens': 'Error'
-        }
-        return model_name, None, str(e), elapsed, token_info
+class LLMComparisonApp:
+    """Main application class for LLM comparison tool."""
+    
+    def __init__(self):
+        """Initialize the application with required components."""
+        self.config_manager = ConfigManager()
+        self.model_factory = ModelFactory()
+        self.executor = ParallelExecutor()
+        
+        # Configure Streamlit
+        st.set_page_config(
+            layout="wide", 
+            page_title="LLM Model Comparison",
+            page_icon="🤖"
+        )
+    
+    def run(self):
+        """Run the main application."""
+        # Render custom CSS
+        CustomCSS.render()
+        
+        # App header
+        st.title("🤖 LLM Model Comparison")
+        st.markdown("Compare responses from multiple Large Language Models side by side.")
+        
+        # Load and validate configuration
+        try:
+            models = self.config_manager.get_enabled_models()
+            if not models:
+                st.error("No enabled models found in configuration.")
+                return
+                
+            # Validate configuration
+            issues = self.config_manager.validate_config()
+            if issues:
+                with st.expander("⚠️ Configuration Issues", expanded=False):
+                    for issue in issues:
+                        st.warning(issue)
+                        
+        except Exception as e:
+            st.error(f"Configuration error: {e}")
+            st.info("Please check your models_config.json file.")
+            return
+        
+        # Prompt input
+        prompt = PromptInput.render()
+        
+        # Model selection
+        st.subheader("📋 Select models to compare:")
+        model_selections = ModelSelector.render(models)
+        selected_models = ModelSelector.get_selected_models(models, model_selections)
+        
+        # Validation
+        if not selected_models:
+            st.warning("⚠️ Please select at least one model.")
+            return
+        
+        # Generate responses button
+        if st.button("🚀 Generate Responses", type="primary"):
+            self._handle_generation(prompt, selected_models)
+    
+    def _handle_generation(self, prompt: str, selected_models: List):
+        """Handle the response generation process."""
+        if not prompt.strip():
+            st.warning("⚠️ Please enter a prompt before generating responses.")
+            return
+        
+        st.subheader(f"📊 Comparing responses from {len(selected_models)} models:")
+        
+        # Create progress bar
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        
+        try:
+            # Update status
+            status_text.text("🔄 Initializing models...")
+            progress_bar.progress(0.2)
+            
+            # Create model instances
+            model_instances = []
+            for model_config in selected_models:
+                try:
+                    model = self.model_factory.create_model(
+                        model_config.name, 
+                        model_config.provider
+                    )
+                    model_instances.append(model)
+                except Exception as e:
+                    st.error(f"Failed to initialize {model_config.name}: {e}")
+                    return
+            
+            # Update status
+            status_text.text("⚡ Generating responses in parallel...")
+            progress_bar.progress(0.4)
+            
+            # Generate responses in parallel
+            responses = self.executor.execute_parallel(model_instances, prompt)
+            
+            # Update status
+            progress_bar.progress(1.0)
+            status_text.text("✅ Generation complete!")
+            
+            # Clear progress indicators
+            progress_bar.empty()
+            status_text.empty()
+            
+            # Display results
+            ResponseDisplay.render(responses)
+            
+            # Show summary statistics
+            self._show_summary(responses)
+            
+        except Exception as e:
+            st.error(f"Error during generation: {e}")
+            progress_bar.empty()
+            status_text.empty()
+    
+    def _show_summary(self, responses: List):
+        """Show summary statistics of the responses."""
+        if not responses:
+            return
+        
+        with st.expander("📈 Summary Statistics", expanded=False):
+            col1, col2, col3, col4 = st.columns(4)
+            
+            # Calculate statistics
+            successful_responses = [r for r in responses if not r.error]
+            failed_responses = [r for r in responses if r.error]
+            
+            if successful_responses:
+                avg_time = sum(r.elapsed_time for r in successful_responses) / len(successful_responses)
+                fastest = min(successful_responses, key=lambda r: r.elapsed_time)
+                slowest = max(successful_responses, key=lambda r: r.elapsed_time)
+                
+                with col1:
+                    st.metric("✅ Successful", len(successful_responses))
+                
+                with col2:
+                    st.metric("⚡ Average Time", f"{avg_time:.2f}s")
+                
+                with col3:
+                    st.metric("🏃 Fastest", f"{fastest.model_name} ({fastest.elapsed_time:.2f}s)")
+                
+                with col4:
+                    st.metric("🐌 Slowest", f"{slowest.model_name} ({slowest.elapsed_time:.2f}s)")
+            
+            if failed_responses:
+                st.error(f"❌ {len(failed_responses)} model(s) failed to generate responses")
 
 def main():
-    st.title("ChatGPT Model Comparison")
-    
-    # Prompt area
-    prompt = st.text_area("Enter your prompt:", height=150)
-
-    # Load models from config file
-    with open("models_config.json", "r") as f:
-        models_config = json.load(f)
-    MODELS = [(m["name"], get_model_function(m["provider"])) for m in models_config]
-
-    st.subheader("Select the models you want to compare:")
-
-    # Create columns for each model's checkbox so they appear horizontally
-    checkbox_cols = st.columns(len(MODELS))
-    model_selections = {}
-    for i, (model_name, _) in enumerate(MODELS):
-        with checkbox_cols[i]:
-            model_selections[model_name] = st.checkbox(model_name, value=True)
-
-    # Button to generate responses
-    if st.button("Generate Responses"):
-        # Filter selected models
-        selected_models = [m for m in MODELS if model_selections[m[0]]]
-
-        # Make sure user selected at least one model
-        if not selected_models:
-            st.warning("Please select at least one model.")
-            return
-
-        # Ensure user has actually entered a prompt
-        if prompt:
-            st.subheader("Comparing responses from selected models:")
-
-            # Create columns for each selected model
-            cols = st.columns(len(selected_models))
-
-            # Some custom CSS for a "boxed" look with scrollbars and fixed height
-            st.markdown(
-                """
-                <style>
-                .boxed {
-                    border: 2px solid #888;
-                    border-radius: 8px;
-                    padding: 12px;
-                    margin: 10px 0;
-                    background: #fff;
-                    color: #222;
-                    min-height: 180px;
-                    max-height: 350px;
-                    overflow-y: auto;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-                }
-                </style>
-                """,
-                unsafe_allow_html=True
-            )
-
-            # Parallel execution for model responses
-            futures = []
-            with ThreadPoolExecutor() as executor:
-                for model_name, model_func in selected_models:
-                    futures.append(executor.submit(get_response, model_func, prompt, model_name))
-                results = [None] * len(selected_models)
-                name_to_index = {model_name: i for i, (model_name, _) in enumerate(selected_models)}
-                for future in as_completed(futures):
-                    model_name, response, error, elapsed, token_info = future.result()
-                    idx = name_to_index[model_name]
-                    results[idx] = (model_name, response, error, elapsed, token_info)
-
-            # Display results in the same order as selected_models
-            for i, (model_name, response, error, elapsed, token_info) in enumerate(results):
-                with cols[i]:
-                    st.markdown(f"#### {model_name}")
-                    if error:
-                        st.error(f"Error for {model_name}: {error}")
-                        st.markdown(f"<span style='color: #888;'>⏱️ Time: {elapsed:.2f} seconds</span>", unsafe_allow_html=True)
-                    else:
-                        # Format token info for display
-                        if token_info['total_tokens'] != 'Not available' and token_info['total_tokens'] != 'Error':
-                            token_display = f"📊 Tokens: {token_info['input_tokens']} in, {token_info['output_tokens']} out ({token_info['total_tokens']} total)"
-                        else:
-                            token_display = f"📊 Tokens: {token_info['total_tokens']}"
-                        
-                        # Display response and stats
-                        # Display response as plain text
-                        st.text_area("Response:", value=response, height=200, disabled=True, key=f"response_{i}")
-                        # Display stats below response in a smaller format
-                        st.markdown(
-                            f"""
-                            <div style='font-size: 0.8em; color: #666; margin-top: 5px; padding: 5px; background: #f8f9fa; border-radius: 4px;'>
-                                ⏱️ {elapsed:.2f}s | {token_display}
-                            </div>
-                            """,
-                            unsafe_allow_html=True
-                        )
-        else:
-            st.warning("Please enter a prompt before generating responses.")
+    """Main entry point."""
+    try:
+        app = LLMComparisonApp()
+        app.run()
+    except Exception as e:
+        st.error(f"Application error: {e}")
+        st.info("Please check your configuration and try again.")
 
 if __name__ == "__main__":
-    main()
-
+    main() 
