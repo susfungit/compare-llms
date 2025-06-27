@@ -3,7 +3,7 @@
 This is a Streamlit web application that allows you to compare responses from multiple large language models (LLMs) side by side. Enter a prompt, select which models to compare, and view their responses in a visually organized way.
 
 ## Features
-- Compare responses from OpenAI GPT, Anthropic Claude, Google Gemini, and xAI Grok models.
+- Compare responses from OpenAI GPT, Anthropic Claude, Google Gemini (via the latest google-genai SDK), and xAI Grok models.
 - Select which models to include in the comparison.
 - View all responses in a clean, boxed, side-by-side layout.
 - **Easily add or remove models by editing `models_config.json`.**
@@ -44,7 +44,7 @@ You need API keys for each provider you want to use. Set the following environme
 
 - **OpenAI**: `OPENAI_API_KEY`
 - **Anthropic**: `ANTHROPIC_API_KEY`
-- **Google Gemini**: `GEMINI_KEY`
+- **Google Gemini**: `GEMINI_KEY` (set in your environment; the google-genai client will use it automatically if present)
 - **xAI Grok**: `XAI_API_KEY`
 
 You can set them in your shell or in a `.env` file (if using a tool like `python-dotenv`). Example:
@@ -70,6 +70,7 @@ The app will open in your browser. Enter a prompt, select models, and click "Gen
 - LLM requests are executed in parallel using Python's `concurrent.futures` (part of the standard library, no extra install needed).
 - Each model's response is displayed in a scrollable, bordered window for easy reading and comparison.
 - Token usage statistics show input tokens, output tokens, and total tokens for each response. Models that don't provide this information will display "Not available".
+- **Gemini integration now uses the latest [google-genai](https://pypi.org/project/google-genai/) SDK with `genai.Client` and `genai.types`.**
 
 ## License
 MIT 

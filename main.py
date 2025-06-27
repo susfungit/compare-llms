@@ -2,7 +2,8 @@ import os
 import streamlit as st
 import anthropic
 from openai import OpenAI
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
@@ -69,27 +70,26 @@ def generate_claude_text(prompt, model):
 
 def generate_gemini_text(prompt, model):
     try:
-        GEMINI_KEY = os.getenv("GEMINI_KEY")
-        if not GEMINI_KEY:
-            raise ValueError("GEMINI_KEY environment variable not set")
-        
-        genai.configure(api_key=GEMINI_KEY)
-        model_instance = genai.GenerativeModel(model)
-        response = model_instance.generate_content(prompt)
-        
-        # Check if response has text
-        if hasattr(response, 'text'):
-            response_text = response.text
-        else:
-            response_text = str(response)
-            
-        # Gemini doesn't provide token usage in the same way
+    #    GEMINI_KEY = os.getenv("GEMINI_KEY")
+    #    if not GEMINI_KEY:
+    #        raise ValueError("GEMINI_KEY environment variable not set")
+    #    genai.configure(api_key=GEMINI_KEY)
+    #    response = genai.generate_content(model=model, prompt=prompt)
+    #    response_text = response.text if hasattr(response, 'text') else str(response)
+        client=genai.Client()
+        response = client.models.generate_content(
+        model=model,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+        thinking_config=types.ThinkingConfig(thinking_budget=0) # Disables thinking
+    ),
+)
         token_info = {
             'input_tokens': 'Not available',
             'output_tokens': 'Not available',
             'total_tokens': 'Not available'
         }
-        return response_text, token_info
+        return response.text, token_info
     except Exception as e:
         raise Exception(f"Gemini API error: {str(e)}")
 
