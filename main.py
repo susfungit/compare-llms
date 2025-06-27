@@ -7,6 +7,20 @@ import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
 import html
+import warnings
+import logging
+
+# Suppress warnings from Google Generative AI library
+warnings.filterwarnings('ignore', category=UserWarning)
+warnings.filterwarnings('ignore', category=DeprecationWarning)
+
+# Suppress gRPC and absl logging
+logging.getLogger('absl').setLevel(logging.ERROR)
+logging.getLogger('google').setLevel(logging.ERROR)
+logging.getLogger('grpc').setLevel(logging.ERROR)
+
+# Suppress stdout/stderr for gRPC messages
+os.environ['GRPC_PYTHON_LOG_LEVEL'] = 'error'
 
 # Switch to wide layout
 st.set_page_config(layout="wide")
@@ -68,10 +82,6 @@ def generate_gemini_text(prompt, model):
             response_text = response.text
         else:
             response_text = str(response)
-            
-        # Debug: print the response to see what we're getting
-        print(f"Gemini response type: {type(response_text)}")
-        print(f"Gemini response content: {response_text[:200]}...")
             
         # Gemini doesn't provide token usage in the same way
         token_info = {
