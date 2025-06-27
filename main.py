@@ -2,10 +2,11 @@ import os
 import streamlit as st
 import anthropic
 from openai import OpenAI
-from google import genai
+import google.generativeai as genai
 import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
+import html
 
 # Switch to wide layout
 st.set_page_config(layout="wide")
@@ -21,7 +22,14 @@ def generate_gpt_text(prompt, model):
             }
         ]
     )
-    return completion.choices[0].message.content
+    # Extract token usage
+    usage = completion.usage
+    token_info = {
+        'input_tokens': usage.prompt_tokens,
+        'output_tokens': usage.completion_tokens,
+        'total_tokens': usage.total_tokens
+    }
+    return completion.choices[0].message.content, token_info
 
 def generate_claude_text(prompt, model):
     client = anthropic.Anthropic()
@@ -36,13 +44,44 @@ def generate_claude_text(prompt, model):
             }
         ]
     )
-    return completion.content[0].text
+    # Extract token usage
+    usage = completion.usage
+    token_info = {
+        'input_tokens': usage.input_tokens,
+        'output_tokens': usage.output_tokens,
+        'total_tokens': usage.input_tokens + usage.output_tokens
+    }
+    return completion.content[0].text, token_info
 
 def generate_gemini_text(prompt, model):
-    GEMINI_KEY = os.getenv("GEMINI_KEY")
-    client = genai.Client(api_key=GEMINI_KEY)
-    response = client.models.generate_content(model=model, contents=prompt)
-    return response.text
+    try:
+        GEMINI_KEY = os.getenv("GEMINI_KEY")
+        if not GEMINI_KEY:
+            raise ValueError("GEMINI_KEY environment variable not set")
+        
+        genai.configure(api_key=GEMINI_KEY)
+        model_instance = genai.GenerativeModel(model)
+        response = model_instance.generate_content(prompt)
+        
+        # Check if response has text
+        if hasattr(response, 'text'):
+            response_text = response.text
+        else:
+            response_text = str(response)
+            
+        # Debug: print the response to see what we're getting
+        print(f"Gemini response type: {type(response_text)}")
+        print(f"Gemini response content: {response_text[:200]}...")
+            
+        # Gemini doesn't provide token usage in the same way
+        token_info = {
+            'input_tokens': 'Not available',
+            'output_tokens': 'Not available',
+            'total_tokens': 'Not available'
+        }
+        return response_text, token_info
+    except Exception as e:
+        raise Exception(f"Gemini API error: {str(e)}")
 
 def generate_grok_text(prompt,model):
     XAI_API_KEY=os.getenv("XAI_API_KEY")
@@ -59,7 +98,14 @@ def generate_grok_text(prompt,model):
             }
         ]
     )
-    return completion.choices[0].message.content
+    # Extract token usage (xAI uses OpenAI-compatible API)
+    usage = completion.usage
+    token_info = {
+        'input_tokens': usage.prompt_tokens,
+        'output_tokens': usage.completion_tokens,
+        'total_tokens': usage.total_tokens
+    }
+    return completion.choices[0].message.content, token_info
 
 def get_model_function(provider):
     if provider == "openai":
@@ -76,12 +122,17 @@ def get_model_function(provider):
 def get_response(model_func, prompt, model_name):
     start_time = time.time()
     try:
-        response = model_func(prompt, model_name)
+        response, token_info = model_func(prompt, model_name)
         elapsed = time.time() - start_time
-        return model_name, response, None, elapsed
+        return model_name, response, None, elapsed, token_info
     except Exception as e:
         elapsed = time.time() - start_time
-        return model_name, None, str(e), elapsed
+        token_info = {
+            'input_tokens': 'Error',
+            'output_tokens': 'Error',
+            'total_tokens': 'Error'
+        }
+        return model_name, None, str(e), elapsed, token_info
 
 def main():
     st.title("ChatGPT Model Comparison")
@@ -149,27 +200,32 @@ def main():
                 results = [None] * len(selected_models)
                 name_to_index = {model_name: i for i, (model_name, _) in enumerate(selected_models)}
                 for future in as_completed(futures):
-                    model_name, response, error, elapsed = future.result()
+                    model_name, response, error, elapsed, token_info = future.result()
                     idx = name_to_index[model_name]
-                    results[idx] = (model_name, response, error, elapsed)
+                    results[idx] = (model_name, response, error, elapsed, token_info)
 
             # Display results in the same order as selected_models
-            for i, (model_name, response, error, elapsed) in enumerate(results):
+            for i, (model_name, response, error, elapsed, token_info) in enumerate(results):
                 with cols[i]:
                     st.markdown(f"#### {model_name}")
                     if error:
                         st.error(f"Error for {model_name}: {error}")
                         st.markdown(f"<span style='color: #888;'>⏱️ Time: {elapsed:.2f} seconds</span>", unsafe_allow_html=True)
                     else:
+                        # Format token info for display
+                        if token_info['total_tokens'] != 'Not available' and token_info['total_tokens'] != 'Error':
+                            token_display = f"📊 Tokens: {token_info['input_tokens']} in, {token_info['output_tokens']} out ({token_info['total_tokens']} total)"
+                        else:
+                            token_display = f"📊 Tokens: {token_info['total_tokens']}"
+                        
+                        # Display response and stats
+                        # Display response as plain text
+                        st.text_area("Response:", value=response, height=200, disabled=True, key=f"response_{i}")
+                        # Display stats below response in a smaller format
                         st.markdown(
                             f"""
-                            <div class="boxed">
-                                <div style='white-space: pre-wrap; font-family: inherit; font-size: 1rem;'>
-                                    {response}
-                                </div>
-                                <div style='margin-top: 10px; color: #888; font-size: 0.95em;'>
-                                    ⏱️ Time: {elapsed:.2f} seconds
-                                </div>
+                            <div style='font-size: 0.8em; color: #666; margin-top: 5px; padding: 5px; background: #f8f9fa; border-radius: 4px;'>
+                                ⏱️ {elapsed:.2f}s | {token_display}
                             </div>
                             """,
                             unsafe_allow_html=True
