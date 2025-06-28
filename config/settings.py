@@ -6,16 +6,17 @@ from dataclasses import dataclass
 @dataclass
 class ModelConfig:
     """Configuration for a single model."""
-    name: str
+    model_id: str
     provider: str
+    display_name: str
     enabled: bool = True
     max_tokens: int = 1000
     temperature: float = 1.0
-    display_name: Optional[str] = None
     
     def __post_init__(self):
-        if self.display_name is None:
-            self.display_name = self.name
+        # Ensure display_name is set, fallback to model_id if not provided
+        if not self.display_name:
+            self.display_name = self.model_id
 
 class ConfigManager:
     """Manages application configuration."""
@@ -49,10 +50,14 @@ class ConfigManager:
                     raise ValueError("Each model configuration must be an object")
                 
                 # Validate required fields
-                required_fields = ['name', 'provider']
+                required_fields = ['model_id', 'provider']
                 for field in required_fields:
                     if field not in model_data:
                         raise ValueError(f"Model configuration missing required field: {field}")
+                
+                # Ensure display_name is present, fallback to model_id
+                if 'display_name' not in model_data:
+                    model_data['display_name'] = model_data['model_id']
                 
                 models.append(ModelConfig(**model_data))
             
@@ -71,10 +76,10 @@ class ConfigManager:
         """Get models for a specific provider."""
         return [m for m in self.models if m.provider == provider]
     
-    def get_model_by_name(self, name: str) -> Optional[ModelConfig]:
-        """Get a specific model by name."""
+    def get_model_by_id(self, model_id: str) -> Optional[ModelConfig]:
+        """Get a specific model by model_id."""
         for model in self.models:
-            if model.name == name:
+            if model.model_id == model_id:
                 return model
         return None
     
@@ -89,11 +94,11 @@ class ConfigManager:
         try:
             models = self.models
             
-            # Check for duplicate model names
-            names = [m.name for m in models]
-            duplicates = set([name for name in names if names.count(name) > 1])
+            # Check for duplicate model IDs
+            model_ids = [m.model_id for m in models]
+            duplicates = set([model_id for model_id in model_ids if model_ids.count(model_id) > 1])
             if duplicates:
-                issues.append(f"Duplicate model names found: {duplicates}")
+                issues.append(f"Duplicate model IDs found: {duplicates}")
             
             # Check for supported providers
             from models.model_factory import ModelFactory
@@ -101,7 +106,7 @@ class ConfigManager:
             
             for model in models:
                 if model.provider not in supported_providers:
-                    issues.append(f"Unsupported provider '{model.provider}' for model '{model.name}'")
+                    issues.append(f"Unsupported provider '{model.provider}' for model '{model.model_id}'")
             
         except Exception as e:
             issues.append(f"Configuration validation error: {e}")

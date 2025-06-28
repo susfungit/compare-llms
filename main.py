@@ -4,13 +4,41 @@ import logging
 import os
 from typing import List
 
-# Suppress warnings and logging
-warnings.filterwarnings('ignore', category=UserWarning)
-warnings.filterwarnings('ignore', category=DeprecationWarning)
-logging.getLogger('absl').setLevel(logging.ERROR)
-logging.getLogger('google').setLevel(logging.ERROR)
-logging.getLogger('grpc').setLevel(logging.ERROR)
-os.environ['GRPC_PYTHON_LOG_LEVEL'] = 'error'
+def configure_logging():
+    """Configure logging suppressions based on enabled models."""
+    try:
+        # Check if Gemini is enabled in config
+        import json
+        with open("models_config.json", "r") as f:
+            config = json.load(f)
+        
+        # Check if any Gemini models are enabled
+        has_gemini = any(
+            model.get("provider") == "gemini" and model.get("enabled", True) 
+            for model in config
+        )
+        
+        if has_gemini:
+            # Only suppress Google/gRPC warnings if Gemini is enabled
+            logging.getLogger('absl').setLevel(logging.ERROR)
+            logging.getLogger('google').setLevel(logging.ERROR)
+            logging.getLogger('grpc').setLevel(logging.ERROR)
+            os.environ['GRPC_PYTHON_LOG_LEVEL'] = 'error'
+            print("ℹ️  Suppressed Google/gRPC warnings (Gemini enabled)")
+        
+        # Always suppress deprecation warnings (they're just noise)
+        warnings.filterwarnings('ignore', category=DeprecationWarning)
+        
+    except Exception:
+        # Fallback: suppress all if config can't be read
+        logging.getLogger('absl').setLevel(logging.ERROR)
+        logging.getLogger('google').setLevel(logging.ERROR)
+        logging.getLogger('grpc').setLevel(logging.ERROR)
+        os.environ['GRPC_PYTHON_LOG_LEVEL'] = 'error'
+        warnings.filterwarnings('ignore', category=DeprecationWarning)
+
+# Configure logging before imports that might generate warnings
+configure_logging()
 
 # Import modular components
 from config.settings import ConfigManager
@@ -101,12 +129,12 @@ class LLMComparisonApp:
             for model_config in selected_models:
                 try:
                     model = self.model_factory.create_model(
-                        model_config.name, 
+                        model_config.model_id,  # Use model_id for LLM calls
                         model_config.provider
                     )
                     model_instances.append(model)
                 except Exception as e:
-                    st.error(f"Failed to initialize {model_config.name}: {e}")
+                    st.error(f"Failed to initialize {model_config.display_name}: {e}")
                     return
             
             # Update status
@@ -115,6 +143,11 @@ class LLMComparisonApp:
             
             # Generate responses in parallel
             responses = self.executor.execute_parallel(model_instances, prompt)
+            
+            # Update response model names to use display names for UI
+            for i, response in enumerate(responses):
+                if i < len(selected_models):
+                    response.model_name = selected_models[i].display_name
             
             # Update status
             progress_bar.progress(1.0)

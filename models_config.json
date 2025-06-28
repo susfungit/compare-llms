@@ -1,13 +1,16 @@
 [
-  {"name": "o3", "provider": "openai"},
-  {"name": "o3-mini", "provider": "openai"},
+  {"model_id": "o3", "provider": "openai", "display_name": "o3"},
+  {"model_id": "o3-mini", "provider": "openai", "display_name": "o3-mini"},
 
-   {"name": "o4-mini", "provider": "openai"},
-  {"name": "gpt-4.1", "provider": "openai"},
-  {"name": "gpt-4o", "provider": "openai"},
+   {"model_id": "o4-mini", "provider": "openai", "display_name": "o4-mini"},
+  {"model_id": "gpt-4.1", "provider": "openai", "display_name": "gpt-4.1"},
+  {"model_id": "gpt-4o", "provider": "openai", "display_name": "gpt-4o"},
 
 
-  {"name": "gemini-2.5-flash", "provider": "gemini"},
-  {"name": "grok-2-latest", "provider": "grok"},
-  {"name": "claude-3-7-sonnet-20250219", "provider": "claude"}
+  {"model_id": "gemini-2.5-flash", "provider": "gemini", "display_name": "gemini-2.5-flash"},
+  {"model_id": "grok-3", "provider": "grok", "display_name": "grok-3"},
+  {"model_id": "grok-3-fast", "provider": "grok", "display_name": "grok-3-fast"},
+  {"model_id": "claude-3-7-sonnet-20250219", "provider": "claude", "display_name": "claude-3-7"},
+  {"model_id": "claude-sonnet-4-20250514", "provider": "claude", "display_name": "claude sonnet 4"},
+  {"model_id": "claude-opus-4-20250514", "provider": "claude", "display_name": "claude opus 4"}
 ] 

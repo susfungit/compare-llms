@@ -15,7 +15,7 @@ class ModelSelector:
             models: List of model configurations
             
         Returns:
-            Dictionary mapping model names to selection status
+            Dictionary mapping model IDs to selection status
         """
         if not models:
             st.warning("No models available in configuration.")
@@ -27,11 +27,11 @@ class ModelSelector:
         
         for i, model in enumerate(models):
             with cols[i]:
-                display_name = model.display_name or model.name
-                selections[model.name] = st.checkbox(
-                    display_name, 
+                # Use display_name for UI, model_id for internal logic
+                selections[model.model_id] = st.checkbox(
+                    model.display_name, 
                     value=True,
-                    key=f"model_select_{model.name}"
+                    key=f"model_select_{model.model_id}"
                 )
         
         return selections
@@ -39,7 +39,7 @@ class ModelSelector:
     @staticmethod
     def get_selected_models(models: List[ModelConfig], selections: Dict[str, bool]) -> List[ModelConfig]:
         """Get list of selected models."""
-        return [model for model in models if selections.get(model.name, False)]
+        return [model for model in models if selections.get(model.model_id, False)]
 
 class ResponseDisplay:
     """Component for displaying model responses."""
