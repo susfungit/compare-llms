@@ -21,6 +21,8 @@ class GrokModel(BaseModel):
         """Generate response using Grok API."""
         completion = self.client.chat.completions.create(
             model=self.model_name,
+            max_tokens=self.max_tokens,
+            temperature=self.temperature,
             messages=[{"role": "user", "content": prompt}]
         )
         

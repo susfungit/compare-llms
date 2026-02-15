@@ -20,8 +20,10 @@ class ModelResponse:
 class BaseModel(ABC):
     """Base class for all LLM models."""
     
-    def __init__(self, model_name: str):
+    def __init__(self, model_name: str, max_tokens: int = 1000, temperature: float = 1.0):
         self.model_name = model_name
+        self.max_tokens = max_tokens
+        self.temperature = temperature
         self._client = None
     
     @property

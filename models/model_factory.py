@@ -16,13 +16,13 @@ class ModelFactory:
     }
     
     @classmethod
-    def create_model(cls, model_name: str, provider: str) -> BaseModel:
+    def create_model(cls, model_name: str, provider: str, max_tokens: int = 1000, temperature: float = 1.0) -> BaseModel:
         """Create a model instance based on provider."""
         if provider not in cls._model_classes:
             raise ValueError(f"Unknown provider: {provider}")
-        
+
         model_class = cls._model_classes[provider]
-        return model_class(model_name)
+        return model_class(model_name, max_tokens=max_tokens, temperature=temperature)
     
     @classmethod
     def get_supported_providers(cls) -> list:

@@ -63,5 +63,11 @@ coverage.xml
 # Streamlit
 .streamlit/
 
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
 # macOS
 .DS_Store 

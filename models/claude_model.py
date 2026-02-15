@@ -13,8 +13,8 @@ class ClaudeModel(BaseModel):
         """Generate response using Claude API."""
         completion = self.client.messages.create(
             model=self.model_name,
-            max_tokens=1000,
-            temperature=1,
+            max_tokens=self.max_tokens,
+            temperature=self.temperature,
             messages=[{"role": "user", "content": prompt}]
         )
         

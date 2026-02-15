@@ -16,6 +16,8 @@ class GeminiModel(BaseModel):
             model=self.model_name,
             contents=prompt,
             config=types.GenerateContentConfig(
+                max_output_tokens=self.max_tokens,
+                temperature=self.temperature,
                 thinking_config=types.ThinkingConfig(thinking_budget=0)
             )
         )

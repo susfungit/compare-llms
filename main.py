@@ -130,7 +130,9 @@ class LLMComparisonApp:
                 try:
                     model = self.model_factory.create_model(
                         model_config.model_id,  # Use model_id for LLM calls
-                        model_config.provider
+                        model_config.provider,
+                        max_tokens=model_config.max_tokens,
+                        temperature=model_config.temperature
                     )
                     model_instances.append(model)
                 except Exception as e:

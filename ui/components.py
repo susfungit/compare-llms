@@ -89,27 +89,12 @@ class ResponseDisplay:
         """Render response statistics."""
         token_display = ResponseDisplay._format_token_info(response.token_info)
         
-        st.markdown(
-            f"""
-            <div style='font-size: 0.8em; color: #666; margin-top: 5px; 
-                       padding: 5px; background: #f8f9fa; border-radius: 4px;'>
-                ⏱️ {response.elapsed_time:.2f}s | {token_display}
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+        st.caption(f"⏱️ {response.elapsed_time:.2f}s | {token_display}")
     
     @staticmethod
     def _render_error_stats(response: ModelResponse):
         """Render statistics for error responses."""
-        st.markdown(
-            f"""
-            <div style='font-size: 0.8em; color: #888; margin-top: 5px;'>
-                ⏱️ Time: {response.elapsed_time:.2f} seconds
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+        st.caption(f"⏱️ Time: {response.elapsed_time:.2f} seconds")
     
     @staticmethod
     def _format_token_info(token_info) -> str:
@@ -143,7 +128,8 @@ class PromptInput:
             "Enter your prompt:",
             height=height,
             placeholder=placeholder,
-            key="prompt_input"
+            key="prompt_input",
+            max_chars=50000
         )
 
 class CustomCSS:
